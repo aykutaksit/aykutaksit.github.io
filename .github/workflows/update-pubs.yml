@@ -2,8 +2,8 @@ name: Weekly refresh pubs.bib
 
 on:
   schedule:
-    - cron: '0 4 * * 0'     # Sun 04:00 UTC  (≈ Sat midnight ET)
-  workflow_dispatch:
+    - cron: '0 4 * * 0'        # Sun 04 UTC  (≈ Sat midnight ET)
+  workflow_dispatch:           # manual trigger
 
 jobs:
   update:
@@ -16,49 +16,54 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Fetch latest Google Scholar → pubs.bib
+      - name: Regenerate pubs.bib
         run: |
           pip install scholarly==1.7.11
+
           python - <<'PY'
           from scholarly import scholarly, ProxyGenerator
           import pathlib, datetime, sys, traceback, textwrap
 
-          USER_ID  = "thCuEKEAAAAJ"            # Aykut Aksit
+          USER_ID  = "thCuEKEAAAAJ"     # Aykut Aksit
           OUTFILE  = pathlib.Path("pubs.bib")
-          today    = datetime.date.today()
+          TODAY    = datetime.date.today()
 
-          def fetch(use_proxy: bool) -> list[str] | None:
-              """Return list of BibTeX strings or None on failure."""
+          def fetch(with_proxy: bool):
               try:
-                  if use_proxy:
+                  if with_proxy:
                       pg = ProxyGenerator()
-                      if not pg.FreeProxies():
-                          raise RuntimeError("no free proxies found")
+                      try:
+                          ok = pg.FreeProxies()
+                      except Exception:
+                          ok = False
+                      if not ok:
+                          raise RuntimeError("no proxy available")
                       scholarly.use_proxy(pg)
+
                   author = scholarly.fill(
                       scholarly.search_author_id(USER_ID),
                       sections=["publications"]
                   )
                   return [scholarly.bibtex(p) for p in author["publications"]]
               except Exception as e:
-                  print(f"⚠️ fetch({'proxy' if use_proxy else 'direct'}) failed:", e)
+                  reason = "proxy" if with_proxy else "direct"
+                  print(f"⚠️  {reason} fetch failed:", e)
                   print(traceback.format_exc())
                   return None
 
-          # 1️⃣ try with proxy   2️⃣ then direct  3️⃣ give up
-          bibs = fetch(use_proxy=True) or fetch(use_proxy=False)
+          bibs = fetch(True) or fetch(False)
           if not bibs:
-              print("❌  Could not retrieve publications; leaving pubs.bib unchanged.")
-              sys.exit(0)        # succeed workflow but skip commit
+              print("❌  Could not retrieve publications; keeping current pubs.bib.")
+              sys.exit(0)   # exit 0 so the Action stays green
 
-          new_text = textwrap.dedent(f\"\"\"\
-              % auto-generated {today}
-              
+          new_text = textwrap.dedent(f"""\
+              % auto-generated {TODAY}
+
               {'\\n\\n'.join(bibs)}
-              \"\"\").rstrip() + "\n"
+              """).rstrip() + "\n"
 
           if OUTFILE.exists() and OUTFILE.read_text() == new_text:
-              print("ℹ️  pubs.bib already up-to-date; nothing to commit.")
+              print("ℹ️  pubs.bib already up to date.")
               sys.exit(0)
 
           OUTFILE.write_text(new_text, encoding="utf-8")
