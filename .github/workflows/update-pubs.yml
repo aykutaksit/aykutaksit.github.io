@@ -5,6 +5,9 @@ on:
     - cron: '0 4 * * 0'        # Sun 04 UTC  (≈ Sat midnight ET)
   workflow_dispatch:           # manual trigger
 
+permissions:
+  contents: write      # allows github-actions[bot] to commit & push
+
 jobs:
   update:
     runs-on: ubuntu-latest
