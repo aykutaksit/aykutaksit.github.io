@@ -77,7 +77,7 @@ jobs:
               bib_text = requests.get(bib_url, timeout=30).text.strip()
               bib_entries.append(bib_text)
 
-          +if not bib_entries:
+          if not bib_entries:
               print("No BibTeX entries fetched; leaving current list unchanged.")
               exit(0)
 
