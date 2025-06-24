@@ -2,124 +2,98 @@ name: Weekly refresh publications
 
 on:
   schedule:
-    - cron: '0 4 * * 0'      # every Sunday 04 UTC
-  workflow_dispatch:          # allow manual runs
+    - cron:  '0 4 * * 0'   # every Sun 04 UTC
+  workflow_dispatch:
 
 permissions:
-  contents: write             # let the action push changes
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1 – checkout repo
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with: { python-version: '3.x' }
 
-      # 2 – Python
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
+    - name: Fetch Scholar and update publication list
+      env: { SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }} }
+      run: |
+        pip install requests bibtexparser==1.4.3
 
-      # 3 – fetch Scholar, build pubs.bib, inject HTML list
-      - name: Fetch Scholar and update publication list
-        env:
-          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
-        run: |
-          pip install requests bibtexparser==1.4.3
-          
-          python - <<'PY'
-          import requests, os, pathlib, datetime, textwrap, bibtexparser, html
+        python - <<'PY'
+        import requests, os, pathlib, datetime, textwrap, bibtexparser, html
 
-          AUTHOR_ID = "thCuEKEAAAAJ"              # Aykut Aksit
-          API_KEY   = os.environ["SERPAPI_KEY"]
-          ROOT      = pathlib.Path(".")
+        AUTHOR = "thCuEKEAAAAJ"
+        KEY    = os.environ["SERPAPI_KEY"]
+        ROOT   = pathlib.Path(".")
 
-          # --- 1. get article list for the author ---
-          author_json = requests.get(
-              "https://serpapi.com/search.json",
-              params={
-                  "engine":    "google_scholar_author",
-                  "author_id": AUTHOR_ID,
-                  "num":       100,
-                  "api_key":   API_KEY,
-              },
-              timeout=30
-          ).json()
-          articles = author_json.get("articles", [])
+        # — get articles —
+        auth = requests.get(
+            "https://serpapi.com/search.json",
+            params={
+                "engine":    "google_scholar_author",
+                "author_id": AUTHOR,
+                "num":       100,
+                "api_key":   KEY,
+            }, timeout=30).json()
 
-          # --- 2. fetch BibTeX for each article (skip if missing) ---
-          bib_entries = []
-          for art in articles:
-              cid = art.get("citation_id")
-              if not cid:
-                  continue            # no cite-id → skip
+        bibs = []
+        for art in auth.get("articles", []):
+            cid = art.get("citation_id")
+            if not cid:
+                continue
+            short = cid.split(":")[-1]          # keep only last token
 
-              cite_json = requests.get(
-                  "https://serpapi.com/search.json",
-                  params={
-                      "engine": "google_scholar_cite",
-                      "q":      cid,
-                      "api_key": API_KEY
-                  },
-                  timeout=30
-              ).json()
+            cite = requests.get(
+                "https://serpapi.com/search.json",
+                params={
+                    "engine": "google_scholar_cite",
+                    "q":      short,
+                    "api_key": KEY
+                }, timeout=30).json()
 
-              citations = cite_json.get("citations")
-              if not citations:
-                  print(f"skip {cid}: no BibTeX link returned")
-                  continue
+            links = cite.get("citations")
+            if not links:
+                print("skip", short, "no BibTeX")
+                continue
 
-              bib_url = citations[0]["link"]
-              bib_txt = requests.get(bib_url, timeout=30).text.strip()
-              bib_entries.append(bib_txt)
+            bib_url = links[0]["link"]
+            bibs.append(requests.get(bib_url, timeout=30).text.strip())
 
-          if not bib_entries:
-              raise SystemExit("No BibTeX entries fetched – aborting.")
+        if not bibs:
+            raise SystemExit("No BibTeX entries fetched – aborting.")
 
-          # --- 3. write pubs.bib ---
-          bib_path = ROOT / "pubs.bib"
-          bib_path.write_text(
-              "% auto-generated "
-              f"{datetime.date.today()}\n\n" +
-              "\n\n".join(bib_entries) + "\n",
-              encoding="utf-8"
-          )
+        # — write pubs.bib —
+        (ROOT / "pubs.bib").write_text(
+            f"% auto-generated {datetime.date.today()}\n\n"
+            + "\n\n".join(bibs) + "\n",
+            encoding="utf-8")
 
-          # --- 4. render HTML list ---
-          db = bibtexparser.loads("\n\n".join(bib_entries))
-          items = []
-          for e in sorted(db.entries, key=lambda x: x.get("year", ""), reverse=True):
-              title   = html.escape(e.get("title", "").rstrip("."))
-              journal = html.escape(e.get("journal", ""))
-              year    = e.get("year", "")
-              items.append(
-                  f"<li class='mb-2'>{title}. <em>{journal}</em> ({year}).</li>"
-              )
-          html_block = "<ul class='list-disc ml-6'>\n" + "\n".join(items) + "\n</ul>"
+        # — render simple HTML list —
+        db = bibtexparser.loads("\n\n".join(bibs))
+        items = []
+        for e in sorted(db.entries, key=lambda x: x.get("year",""), reverse=True):
+            title = html.escape(e.get("title","").rstrip("."))
+            journal = html.escape(e.get("journal",""))
+            year = e.get("year","")
+            items.append(f"<li class='mb-2'>{title}. <em>{journal}</em> ({year}).</li>")
+        ul = "<ul class='list-disc ml-6'>\n" + "\n".join(items) + "\n</ul>"
 
-          # --- 5. inject between PUBLIST markers in publications.html ---
-          html_path = ROOT / "publications.html"
-          raw = html_path.read_text()
-          start = raw.find("<!-- PUBLIST-START -->")
-          end   = raw.find("<!-- PUBLIST-END -->")
-          if start == -1 or end == -1:
-              raise SystemExit("Marker comments not found in publications.html")
-          new_raw = (
-              raw[:start] +
-              "<!-- PUBLIST-START -->\n" +
-              html_block +
-              "\n<!-- PUBLIST-END -->" +
-              raw[end + len("<!-- PUBLIST-END -->"):]
-          )
-          html_path.write_text(new_raw, encoding="utf-8")
-          PY
+        # — inject between markers —
+        html_path = ROOT / "publications.html"
+        src = html_path.read_text()
+        a = src.find("<!-- PUBLIST-START -->")
+        b = src.find("<!-- PUBLIST-END -->")
+        new = src[:a] + "<!-- PUBLIST-START -->\n" + ul + "\n<!-- PUBLIST-END -->" + src[b+17:]
+        html_path.write_text(new, encoding="utf-8")
+        PY
 
-      # 4 – commit if anything changed
-      - name: Commit and push changes
-        run: |
-          git config user.name  "github-actions"
-          git config user.email "actions@users.noreply.github.com"
-          git add pubs.bib publications.html
-          git diff --cached --quiet || git commit -m "auto: refresh publication list"
-          git push
+    - name: Commit and push if changed
+      run: |
+        git config user.name  "github-actions"
+        git config user.email "actions@users.noreply.github.com"
+        git add pubs.bib publications.html
+        git diff --cached --quiet || git commit -m "auto: refresh publication list"
+        git push
