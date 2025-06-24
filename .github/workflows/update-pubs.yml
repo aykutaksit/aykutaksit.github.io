@@ -2,98 +2,126 @@ name: Weekly refresh publications
 
 on:
   schedule:
-    - cron:  '0 4 * * 0'   # every Sun 04 UTC
+    # Sunday 04:00 UTC  (≈ Sat midnight US-ET)
+    - cron: '0 4 * * 0'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write        # allow the action to push changes
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with: { python-version: '3.x' }
+      # 1 – check out repo
+      - uses: actions/checkout@v4
 
-    - name: Fetch Scholar and update publication list
-      env: { SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }} }
-      run: |
-        pip install requests bibtexparser==1.4.3
+      # 2 – set up Python
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-        python - <<'PY'
-        import requests, os, pathlib, datetime, textwrap, bibtexparser, html
+      # 3 – fetch Google Scholar via SerpAPI, update pubs.bib and publications.html
+      - name: Fetch Scholar and update publications
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+        run: |
+          pip install requests bibtexparser==1.4.3
 
-        AUTHOR = "thCuEKEAAAAJ"
-        KEY    = os.environ["SERPAPI_KEY"]
-        ROOT   = pathlib.Path(".")
+          python - <<'PY'
+          import requests, os, pathlib, datetime, bibtexparser, html
 
-        # — get articles —
-        auth = requests.get(
-            "https://serpapi.com/search.json",
-            params={
-                "engine":    "google_scholar_author",
-                "author_id": AUTHOR,
-                "num":       100,
-                "api_key":   KEY,
-            }, timeout=30).json()
+          AUTHOR_ID = "thCuEKEAAAAJ"
+          API_KEY   = os.environ["SERPAPI_KEY"]
+          ROOT      = pathlib.Path(".")
 
-        bibs = []
-        for art in auth.get("articles", []):
-            cid = art.get("citation_id")
-            if not cid:
-                continue
-            short = cid.split(":")[-1]          # keep only last token
+          # -- step 1 fetch author’s article list --
+          auth_json = requests.get(
+              "https://serpapi.com/search.json",
+              params={
+                  "engine":    "google_scholar_author",
+                  "author_id": AUTHOR_ID,
+                  "num":       100,
+                  "api_key":   API_KEY,
+              },
+              timeout=30
+          ).json()
 
-            cite = requests.get(
-                "https://serpapi.com/search.json",
-                params={
-                    "engine": "google_scholar_cite",
-                    "q":      short,
-                    "api_key": KEY
-                }, timeout=30).json()
+          bib_entries = []
 
-            links = cite.get("citations")
-            if not links:
-                print("skip", short, "no BibTeX")
-                continue
+          # -- step 2 loop over articles, fetch BibTeX --
+          for art in auth_json.get("articles", []):
+              cid = art.get("citation_id")
+              if not cid:
+                  continue
+              short_id = cid.split(":")[-1]  # keep only the final token
 
-            bib_url = links[0]["link"]
-            bibs.append(requests.get(bib_url, timeout=30).text.strip())
+              cite_json = requests.get(
+                  "https://serpapi.com/search.json",
+                  params={
+                      "engine": "google_scholar_cite",
+                      "q":      short_id,
+                      "api_key": API_KEY
+                  },
+                  timeout=30
+              ).json()
 
-        if not bibs:
-            raise SystemExit("No BibTeX entries fetched – aborting.")
+              links = cite_json.get("citations")
+              if not links:
+                  print("skip", short_id, "- no BibTeX link")
+                  continue
 
-        # — write pubs.bib —
-        (ROOT / "pubs.bib").write_text(
-            f"% auto-generated {datetime.date.today()}\n\n"
-            + "\n\n".join(bibs) + "\n",
-            encoding="utf-8")
+              bib_url = links[0]["link"]
+              bib_text = requests.get(bib_url, timeout=30).text.strip()
+              bib_entries.append(bib_text)
 
-        # — render simple HTML list —
-        db = bibtexparser.loads("\n\n".join(bibs))
-        items = []
-        for e in sorted(db.entries, key=lambda x: x.get("year",""), reverse=True):
-            title = html.escape(e.get("title","").rstrip("."))
-            journal = html.escape(e.get("journal",""))
-            year = e.get("year","")
-            items.append(f"<li class='mb-2'>{title}. <em>{journal}</em> ({year}).</li>")
-        ul = "<ul class='list-disc ml-6'>\n" + "\n".join(items) + "\n</ul>"
+          if not bib_entries:
+              raise SystemExit("No BibTeX entries fetched – aborting.")
 
-        # — inject between markers —
-        html_path = ROOT / "publications.html"
-        src = html_path.read_text()
-        a = src.find("<!-- PUBLIST-START -->")
-        b = src.find("<!-- PUBLIST-END -->")
-        new = src[:a] + "<!-- PUBLIST-START -->\n" + ul + "\n<!-- PUBLIST-END -->" + src[b+17:]
-        html_path.write_text(new, encoding="utf-8")
-        PY
+          # -- step 3 write pubs.bib --
+          (ROOT / "pubs.bib").write_text(
+              "% auto-generated "
+              f"{datetime.date.today()}\n\n" +
+              "\n\n".join(bib_entries) + "\n",
+              encoding="utf-8"
+          )
 
-    - name: Commit and push if changed
-      run: |
-        git config user.name  "github-actions"
-        git config user.email "actions@users.noreply.github.com"
-        git add pubs.bib publications.html
-        git diff --cached --quiet || git commit -m "auto: refresh publication list"
-        git push
+          # -- step 4 render simple HTML list --
+          db = bibtexparser.loads("\n\n".join(bib_entries))
+          items = []
+          for entry in sorted(db.entries, key=lambda x: x.get("year", ""), reverse=True):
+              title   = html.escape(entry.get("title", "").rstrip("."))
+              journal = html.escape(entry.get("journal", ""))
+              year    = entry.get("year", "")
+              items.append(
+                  f"<li class='mb-2'>{title}. <em>{journal}</em> ({year}).</li>"
+              )
+          ul_block = "<ul class='list-disc ml-6'>\n" + "\n".join(items) + "\n</ul>"
+
+          # -- step 5 inject into publications.html between markers --
+          html_path = ROOT / "publications.html"
+          html_src  = html_path.read_text()
+          start = html_src.find("<!-- PUBLIST-START -->")
+          end   = html_src.find("<!-- PUBLIST-END -->")
+          if start == -1 or end == -1:
+              raise SystemExit("Marker comments not found in publications.html")
+
+          new_html = (
+              html_src[:start] +
+              "<!-- PUBLIST-START -->\n" +
+              ul_block +
+              "\n<!-- PUBLIST-END -->" +
+              html_src[end + len("<!-- PUBLIST-END -->"):]
+          )
+          html_path.write_text(new_html, encoding="utf-8")
+          PY
+
+      # 4 – commit only if something changed
+      - name: Commit and push if changed
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add pubs.bib publications.html
+          git diff --cached --quiet || git commit -m "auto: refresh publication list"
+          git push
