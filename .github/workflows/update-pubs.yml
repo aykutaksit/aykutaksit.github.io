@@ -1,10 +1,9 @@
 name: Weekly refresh pubs.bib
 
 on:
-  # Runs every Sunday at 04:00 UTC  (≈ midnight Sat US-ET)
   schedule:
-    - cron: '0 4 * * 0'
-  workflow_dispatch:        # lets you trigger it manually
+    - cron: '0 4 * * 0'     # Sun 04:00 UTC  (≈ Sat midnight ET)
+  workflow_dispatch:
 
 jobs:
   update:
@@ -17,45 +16,53 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Regenerate pubs.bib in-line
+      - name: Fetch latest Google Scholar → pubs.bib
         run: |
           pip install scholarly==1.7.11
-          
           python - <<'PY'
           from scholarly import scholarly, ProxyGenerator
-          import pathlib, datetime, sys
-          
-          USER_ID = "thCuEKEAAAAJ"        # Aykut Aksit
-          OUTFILE = pathlib.Path("pubs.bib")
+          import pathlib, datetime, sys, traceback, textwrap
 
-          # ▸▸▸ Enable free proxy rotation so Scholar calls succeed
-          pg = ProxyGenerator()
-          pg.FreeProxies()
-          scholarly.use_proxy(pg)
+          USER_ID  = "thCuEKEAAAAJ"            # Aykut Aksit
+          OUTFILE  = pathlib.Path("pubs.bib")
+          today    = datetime.date.today()
 
-          try:
-              author = scholarly.fill(
-                  scholarly.search_author_id(USER_ID),
-                  sections=["publications"]
-              )
-          except Exception as err:
-              sys.exit(f"❌  Google Scholar fetch failed: {err}")
-
-          bibs = []
-          for pub in author["publications"]:
+          def fetch(use_proxy: bool) -> list[str] | None:
+              """Return list of BibTeX strings or None on failure."""
               try:
-                  bibs.append(scholarly.bibtex(pub))
-              except Exception as skip:
-                  print("skip", skip, file=sys.stderr)
+                  if use_proxy:
+                      pg = ProxyGenerator()
+                      if not pg.FreeProxies():
+                          raise RuntimeError("no free proxies found")
+                      scholarly.use_proxy(pg)
+                  author = scholarly.fill(
+                      scholarly.search_author_id(USER_ID),
+                      sections=["publications"]
+                  )
+                  return [scholarly.bibtex(p) for p in author["publications"]]
+              except Exception as e:
+                  print(f"⚠️ fetch({'proxy' if use_proxy else 'direct'}) failed:", e)
+                  print(traceback.format_exc())
+                  return None
 
-          new_text = (
-              f"% auto-generated {datetime.date.today()}\n\n"
-              + "\n\n".join(bibs) + "\n"
-          )
+          # 1️⃣ try with proxy   2️⃣ then direct  3️⃣ give up
+          bibs = fetch(use_proxy=True) or fetch(use_proxy=False)
+          if not bibs:
+              print("❌  Could not retrieve publications; leaving pubs.bib unchanged.")
+              sys.exit(0)        # succeed workflow but skip commit
 
-          if not OUTFILE.exists() or OUTFILE.read_text() != new_text:
-              OUTFILE.write_text(new_text)
+          new_text = textwrap.dedent(f\"\"\"\
+              % auto-generated {today}
+              
+              {'\\n\\n'.join(bibs)}
+              \"\"\").rstrip() + "\n"
 
+          if OUTFILE.exists() and OUTFILE.read_text() == new_text:
+              print("ℹ️  pubs.bib already up-to-date; nothing to commit.")
+              sys.exit(0)
+
+          OUTFILE.write_text(new_text, encoding="utf-8")
+          print(f"✅  Wrote pubs.bib with {len(bibs)} entries")
           PY
 
       - name: Commit if pubs.bib changed
