@@ -1,14 +1,15 @@
 name: Weekly refresh pubs.bib
 
 on:
-  # Runs every Sunday at 04:00 UTC  (≈ midnight Saturday US-ET)
+  # Runs every Sunday at 04:00 UTC  (≈ midnight Sat US-ET)
   schedule:
     - cron: '0 4 * * 0'
-  workflow_dispatch:        # lets you run it manually
+  workflow_dispatch:        # lets you trigger it manually
 
 jobs:
   update:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,33 +20,45 @@ jobs:
       - name: Regenerate pubs.bib in-line
         run: |
           pip install scholarly==1.7.11
+          
           python - <<'PY'
-          from scholarly import scholarly
+          from scholarly import scholarly, ProxyGenerator
           import pathlib, datetime, sys
+          
+          USER_ID = "thCuEKEAAAAJ"        # Aykut Aksit
+          OUTFILE = pathlib.Path("pubs.bib")
 
-          USER_ID = "thCuEKEAAAAJ"    # Aykut Aksit
-          out = pathlib.Path("pubs.bib")
+          # ▸▸▸ Enable free proxy rotation so Scholar calls succeed
+          pg = ProxyGenerator()
+          pg.FreeProxies()
+          scholarly.use_proxy(pg)
 
-          author = scholarly.fill(
-              scholarly.search_author_id(USER_ID),
-              sections=["publications"]
-          )
+          try:
+              author = scholarly.fill(
+                  scholarly.search_author_id(USER_ID),
+                  sections=["publications"]
+              )
+          except Exception as err:
+              sys.exit(f"❌  Google Scholar fetch failed: {err}")
 
           bibs = []
           for pub in author["publications"]:
               try:
                   bibs.append(scholarly.bibtex(pub))
-              except Exception as e:
-                  print("skip", e, file=sys.stderr)
+              except Exception as skip:
+                  print("skip", skip, file=sys.stderr)
 
-          new = ("% auto-generated " + str(datetime.date.today()) + "\n\n"
-                 + "\n\n".join(bibs) + "\n")
+          new_text = (
+              f"% auto-generated {datetime.date.today()}\n\n"
+              + "\n\n".join(bibs) + "\n"
+          )
 
-          if not out.exists() or out.read_text() != new:
-              out.write_text(new)
+          if not OUTFILE.exists() or OUTFILE.read_text() != new_text:
+              OUTFILE.write_text(new_text)
+
           PY
 
-      - name: Commit if changed
+      - name: Commit if pubs.bib changed
         run: |
           git config user.name  "github-actions"
           git config user.email "actions@users.noreply.github.com"
