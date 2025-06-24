@@ -55,13 +55,14 @@ jobs:
               cid = art.get("citation_id")
               if not cid:
                   continue
-              short_id = cid.split(":")[-1]  # keep only the final token
+              short_id = cid.split(":")[-1]
+              q_param  = f"info:{short_id}:scholar.google.com"  # exact format SerpAPI needs
 
               cite_json = requests.get(
                   "https://serpapi.com/search.json",
                   params={
                       "engine": "google_scholar_cite",
-                      "q":      short_id,
+                      "q":      q_param,
                       "api_key": API_KEY
                   },
                   timeout=30
@@ -76,8 +77,9 @@ jobs:
               bib_text = requests.get(bib_url, timeout=30).text.strip()
               bib_entries.append(bib_text)
 
-          if not bib_entries:
-              raise SystemExit("No BibTeX entries fetched – aborting.")
+          +if not bib_entries:
+              print("No BibTeX entries fetched; leaving current list unchanged.")
+              exit(0)
 
           # -- step 3 write pubs.bib --
           (ROOT / "pubs.bib").write_text(
