@@ -63,18 +63,16 @@ jobs:
                   params={
                       "engine": "google_scholar_cite",
                       "q":      q_param,
+                      "format": "bibtex",          # ← ask for BibTeX directly
                       "api_key": API_KEY
                   },
                   timeout=30
               ).json()
-
-              links = cite_json.get("citations")
-              if not links:
-                  print("skip", short_id, "- no BibTeX link")
+            
+              bib_text = cite_json.get("bibtex")
+              if not bib_text:
+                  print("skip", short_id, "- no BibTeX returned")
                   continue
-
-              bib_url = links[0]["link"]
-              bib_text = requests.get(bib_url, timeout=30).text.strip()
               bib_entries.append(bib_text)
 
           if not bib_entries:
