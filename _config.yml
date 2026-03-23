@@ -1,4 +1,11 @@
-title: Aykut Aksit
+title: Aykut Aksit, PhD
 url: "https://aykutaksit.com"
+description: "Co-founder & CEO of Haystack Medical | Expert in Inner-Ear Microneedle Technology | Translating Lab Innovation to First-in-Human Trials"
+email: aykut@haystackmedical.com
 plugins:
   - jekyll-sitemap
+
+# SEO and Branding
+twitter_username: aykutaksit
+github_username: aykutaksit
+excerpt_separator: ""
