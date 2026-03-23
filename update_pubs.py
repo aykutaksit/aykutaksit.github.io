@@ -4,9 +4,9 @@ import html
 
 def clean_latex(text):
     if not text: return ""
-    # Standardize HTML entities first
+    # 1. Unescape HTML (fixes &amp; -> &)
     text = html.unescape(text)
-    # Common LaTeX to Plain Text mapping
+    # 2. Fix LaTeX escapes (fixes \& -> &)
     replacements = {
         r'\\&': '&',
         r'\{&\}': '&',
@@ -22,19 +22,20 @@ def clean_latex(text):
     }
     for latex, plain in replacements.items():
         text = text.replace(latex, plain)
-    # Remove any lingering backslashes before characters
+    # 3. Strip any remaining backslashes from single characters
     text = re.sub(r'\\([a-zA-Z])', r'\1', text)
     return text.strip()
 
 def generate_html():
+    # ENSURE FILE NAME MATCHES: This script looks for 'publications.bib'
     try:
         with open('publications.bib') as bibtex_file:
             bib_database = bibtexparser.load(bibtex_file)
     except Exception as e:
-        print(f"Error reading .bib file: {e}")
+        print(f"Error: Could not find or read 'publications.bib'. Details: {e}")
         return
 
-    # Deduplicate by Title
+    # Deduplicate by Title (case-insensitive)
     seen_titles = set()
     unique_entries = []
     for entry in bib_database.entries:
@@ -46,15 +47,12 @@ def generate_html():
     # Sort by year descending
     entries = sorted(unique_entries, key=lambda x: x.get('year', '0'), reverse=True)
 
-    # Start the list
+    # Build the HTML block
     html_output = '<ul class="divide-y divide-slate-800">\n'
-    
     for entry in entries:
         title = clean_latex(entry.get('title', 'Unknown Title'))
         journal = clean_latex(entry.get('journal', entry.get('booktitle', 'Journal/Patent')))
         year = entry.get('year', 'N/A')
-        
-        # Recency Styling
         opacity = "opacity-100" if year == "2025" else "opacity-70" if year == "2024" else "opacity-50"
 
         html_output += f"""        <li class="p-6 flex gap-4 hover:bg-white/5 transition">
@@ -64,27 +62,25 @@ def generate_html():
             <p class="text-slate-500 text-sm italic">{journal}</p>
           </div>
         </li>\n"""
-    
     html_output += '      </ul>'
 
-    # Read current publications.html
+    # Inject into HTML
     with open('publications.html', 'r') as f:
         content = f.read()
 
     start_marker = ""
     end_marker = ""
     
-    # Surgical replacement: Finds everything between the FIRST start and the LAST end
-    # to prevent duplication if markers were accidentally doubled.
+    # regex: count=1 ensures we ONLY replace the first pair, stopping the duplication loop.
     pattern = re.compile(f"{start_marker}.*?{end_marker}", re.DOTALL)
     
     if start_marker in content:
-        new_content = pattern.sub(f"{start_marker}\n{html_output}\n{end_marker}", content)
+        new_content = pattern.sub(f"{start_marker}\n{html_output}\n{end_marker}", content, count=1)
         with open('publications.html', 'w') as f:
             f.write(new_content)
-        print("Publications updated successfully.")
+        print("Success: publications.html updated once.")
     else:
-        print("Error: Markers not found in publications.html")
+        print("Error: Markers not found. Ensure exists.")
 
 if __name__ == "__main__":
     generate_html()
