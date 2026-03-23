@@ -5,29 +5,19 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Primary SEO tags -->
-  <title>Aykut Aksit | Inner-Ear Tech Innovator &amp; CEO</title>
+  <title>Aykut Aksit, PhD | CEO & Co-founder of Haystack Medical</title>
   <meta
     name="description"
-    content="Aykut Aksit is Co-founder &amp; CEO of Haystack Medical, developing breakthrough inner-ear drug delivery and diagnostic technology."
+    content="Aykut Aksit is the CEO of Haystack Medical, pioneering microneedle technology for inner-ear therapeutics and diagnostics. Translating research to First-in-Human trials."
   />
   <link rel="canonical" href="https://aykutaksit.com/" />
 
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type"        content="website" />
-  <meta property="og:url"         content="https://aykutaksit.com/" />
-  <meta property="og:title"       content="Aykut Aksit | Inner-Ear Tech Innovator &amp; CEO" />
-  <meta property="og:description" content="Pioneering microneedle drug-delivery and diagnostics for the inner ear." />
-  <meta property="og:image"       content="https://aykutaksit.com/assets/og-image.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://aykutaksit.com/" />
+  <meta property="og:title" content="Aykut Aksit, PhD | CEO & Co-founder of Haystack Medical" />
+  <meta property="og:description" content="Pioneering the first safe, reliable access to the inner ear for life-changing therapeutics." />
+  <meta property="og:image" content="https://aykutaksit.com/assets/og-image.png" />
 
-  <!-- Twitter -->
-  <meta name="twitter:card"        content="summary_large_image" />
-  <meta name="twitter:url"         content="https://aykutaksit.com/" />
-  <meta name="twitter:title"       content="Aykut Aksit | Inner-Ear Tech Innovator &amp; CEO" />
-  <meta name="twitter:description" content="Pioneering microneedle drug-delivery and diagnostics for the inner ear." />
-  <meta name="twitter:image"       content="https://aykutaksit.com/assets/og-image.png" />
-
-  <!-- JSON-LD Structured Data -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -46,11 +36,13 @@
   }
   </script>
 
-  <!-- Tailwind & Custom Styles -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>html { scroll-behavior: smooth; }</style>
+  <style>
+    html { scroll-behavior: smooth; }
+    .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    .text-gradient { background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  </style>
 
-  <!-- PostHog Analytics -->
   <script>
     !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}
     (p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,
@@ -66,38 +58,80 @@
         person_profiles: 'always',
     });
   </script>
-  <!-- /PostHog -->
-
 </head>
 
-<body class="font-sans text-black bg-white">
-  <header class="w-full flex justify-between items-center py-6 px-4 md:px-10 max-w-5xl mx-auto">
-    <a href="index.html" class="font-semibold text-lg">Aykut&nbsp;Aksit</a>
-    <nav>
-      <a href="about.html" class="ml-4 hover:underline">About</a>
-      <a href="writing.html" class="ml-4 hover:underline">Writing</a>
-      <a href="projects.html" class="ml-4 hover:underline">Projects</a>
-      <a href="publications.html" class="ml-4 hover:underline">Publications</a>
+<body class="font-sans text-slate-200 bg-[#0f172a]">
+  <header class="w-full flex justify-between items-center py-6 px-4 md:px-10 max-w-5xl mx-auto border-b border-slate-800">
+    <a href="index.html" class="font-bold text-xl tracking-tight text-white">Aykut&nbsp;Aksit<span class="text-sky-400">.</span></a>
+    <nav class="hidden md:flex">
+      <a href="about.html" class="ml-6 hover:text-sky-400 transition">About</a>
+      <a href="writing.html" class="ml-6 hover:text-sky-400 transition">Writing</a>
+      <a href="projects.html" class="ml-6 hover:text-sky-400 transition">Projects</a>
+      <a href="publications.html" class="ml-6 hover:text-sky-400 transition">Publications</a>
     </nav>
+    <a href="mailto:aykut@haystackmedical.com" class="ml-6 px-4 py-2 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-lg hover:bg-sky-500/20 transition text-sm font-medium">Contact</a>
   </header>
 
-  <section class="flex flex-col items-center justify-center text-center py-32 px-6">
-    <h1 class="text-4xl md:text-6xl font-semibold leading-tight">
-      Hey — I’m Aykut Aksit.<br />
-      I build breakthrough inner-ear technology.
+  <section class="flex flex-col items-center justify-center text-center py-24 md:py-32 px-6 max-w-4xl mx-auto">
+    <span class="px-3 py-1 text-xs font-bold tracking-widest text-sky-400 uppercase bg-sky-400/10 rounded-full mb-6">CEO & Co-founder</span>
+    <h1 class="text-5xl md:text-7xl font-extrabold leading-tight text-white mb-8">
+      Engineering the future of <span class="text-gradient">inner-ear therapy.</span>
     </h1>
-    <p class="mt-6 text-lg max-w-xl">
-      Co-founder &amp; CEO of Haystack Medical
+    <p class="text-lg md:text-xl text-slate-400 leading-relaxed max-w-2xl">
+      I lead <a href="https://haystackmedical.com" class="text-white hover:underline">Haystack Medical</a>, where we are translating advanced microengineering into breakthrough clinical solutions for hearing loss and diagnostics.
     </p>
-    <div class="mt-10">
-      <a href="about.html" class="px-6 py-3 border border-black rounded-full hover:bg-black hover:text-white transition">
-        Learn more ↓
+    <div class="mt-12 flex flex-col sm:flex-row gap-4">
+      <a href="#momentum" class="px-8 py-4 bg-white text-black font-bold rounded-xl hover:bg-sky-50 transition">
+        View Current Momentum
+      </a>
+      <a href="publications.html" class="px-8 py-4 glass-card text-white font-semibold rounded-xl hover:bg-white/10 transition">
+        Research Archive
       </a>
     </div>
   </section>
 
-  <footer class="text-center text-sm py-10 text-gray-500">
-    © 2025 Aykut Aksit
+  <section id="momentum" class="py-20 px-6 max-w-5xl mx-auto">
+    <h2 class="text-sm font-bold tracking-[0.2em] text-slate-500 uppercase mb-12 text-center">2026 Strategic Roadmap</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      
+      <div class="glass-card p-8 rounded-2xl border-l-4 border-l-sky-500">
+        <h3 class="text-white font-bold text-lg mb-2">Clinical</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Transitioning to **First-in-Human (FIH) trials** at Columbia NYP in NYC. Finalizing clinical protocols for inner-ear delivery.
+        </p>
+      </div>
+
+      <div class="glass-card p-8 rounded-2xl border-l-4 border-l-indigo-500">
+        <h3 class="text-white font-bold text-lg mb-2">Venture</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Raising a **$2.0M Seed Round**. Currently **$750k soft-circled** with strategic angel and institutional interest.
+        </p>
+      </div>
+
+      <div class="glass-card p-8 rounded-2xl border-l-4 border-l-teal-500">
+        <h3 class="text-white font-bold text-lg mb-2">Technology</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          Leveraging proprietary 2PTE-fabricated metallic microneedles to solve the "access challenge" of the Round Window Membrane.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="py-24 px-6 text-center">
+    <div class="glass-card max-w-3xl mx-auto p-12 rounded-3xl border-sky-500/20">
+      <h2 class="text-3xl font-bold text-white mb-4">Partner with us.</h2>
+      <p class="text-slate-400 mb-8 max-w-lg mx-auto">
+        If you are an investor or clinical partner interested in the future of otology, I’d love to connect.
+      </p>
+      <a href="mailto:aykut@haystackmedical.com" class="text-sky-400 font-bold border-b border-sky-400 hover:text-white hover:border-white transition pb-1">
+        aykut@haystackmedical.com
+      </a>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs py-10 text-slate-600 border-t border-slate-800/50 mt-10">
+    © 2026 Aykut Aksit | Built with precision in New York City
   </footer>
 </body>
 </html>
