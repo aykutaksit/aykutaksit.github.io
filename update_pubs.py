@@ -20,9 +20,10 @@ def generate_html():
         with open('publications.bib', 'r', encoding='utf-8') as f:
             bib_database = bibtexparser.load(f)
     except Exception as e:
-        print("Error reading bib:", e)
+        print("Error reading bib file:", e)
         return
 
+    # Deduplicate by Title
     seen_titles = set()
     unique_entries = []
     for entry in bib_database.entries:
@@ -31,8 +32,10 @@ def generate_html():
             seen_titles.add(title)
             unique_entries.append(entry)
 
+    # Sort descending
     entries = sorted(unique_entries, key=lambda x: str(x.get('year', '0')), reverse=True)
 
+    # Build the HTML list
     html_output = '<ul class="divide-y divide-slate-800">\n'
     for entry in entries:
         title = clean_latex(entry.get('title', 'Unknown Title'))
@@ -49,25 +52,21 @@ def generate_html():
         </li>\n'''
     html_output += '      </ul>'
 
-    with open('publications.html', 'r', encoding='utf-8') as f:
-        content = f.read()
+    # Read the pristine template
+    try:
+        with open('publications_template.html', 'r', encoding='utf-8') as f:
+            template_content = f.read()
+    except Exception as e:
+        print("Error reading template:", e)
+        return
 
-    start_marker = ""
-    end_marker = ""
+    # Swap the placeholder and save the final file
+    final_html = template_content.replace('{{PUBLICATION_LIST_HERE}}', html_output)
 
-    start_idx = content.find(start_marker)
-    end_idx = content.find(end_marker)
-
-    # Bulletproof injection: Only splits and injects if BOTH markers are perfectly found.
-    if start_idx != -1 and end_idx != -1:
-        end_idx += len(end_marker)
-        new_content = content[:start_idx] + start_marker + "\n" + html_output + "\n" + end_marker + content[end_idx:]
+    with open('publications.html', 'w', encoding='utf-8') as f:
+        f.write(final_html)
         
-        with open('publications.html', 'w', encoding='utf-8') as f:
-            f.write(new_content)
-        print("Success: Injected safely.")
-    else:
-        print("Error: Markers not found in the file.")
+    print("Success: Generated a clean publications.html from the template.")
 
 if __name__ == "__main__":
     generate_html()
